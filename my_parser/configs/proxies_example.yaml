@@ -1,0 +1,29 @@
+proxies:
+  - login: 'Af5L2pHZ'
+    password: 'gXAfLKCn'
+    host: '45.93.15.133'
+    port: '63126'
+
+  - login: 'Af5L2pHZ'
+    password: 'gXAfLKCn'
+    host: '45.132.129.247'
+    port: '64480'
+
+  - login: 'Af5L2pHZ'
+    password: 'gXAfLKCn'
+    host: '45.152.116.180'
+    port: '64492'
+
+  - login: 'Af5L2pHZ'
+    password: 'gXAfLKCn'
+    host: '176.103.91.98'
+    port: '62046'
+
+
+  - login: 'Af5L2pHZ'
+    password: 'gXAfLKCn'
+    host: '85.142.1.221'
+    port: '63410'
+
+
+
