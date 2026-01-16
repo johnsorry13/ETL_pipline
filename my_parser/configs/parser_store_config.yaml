@@ -1,3 +1,4 @@
 maxidom:
     name: '[itemprop="name"]'
     price: '[itemprop="price"]'
+    url: 'https://www.maxidom.ru/catalog/feny/1001570998/'
