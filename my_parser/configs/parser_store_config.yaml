@@ -1,4 +1,6 @@
 maxidom:
+    shop: 'maxidom'
     name: '[itemprop="name"]'
     price: '[itemprop="price"]'
-    url: 'https://www.maxidom.ru/catalog/feny/1001570998/'
+    urls: 'https://www.maxidom.ru/catalog/feny/1001570998/'
+    max_workers: 3

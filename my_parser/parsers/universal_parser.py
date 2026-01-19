@@ -1,5 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import csv
 
 from .base_parser import BaseParser
 
@@ -18,6 +20,28 @@ class UniversalParser(BaseParser):
         price = page.select_one(self._store_config['price']).text
         item = {'название': name, 'цена': price}
         return item
+
+    def _parse_and_fetch(self, url):
+        html = self.fetch(url)
+        return self.parse(html)
+
+    def streaming_result(self):
+        urls = self._store_config['urls']
+        with ThreadPoolExecutor (max_workers=self._store_config['max_workers']) as executor:
+            results = {executor.submit(self._parse_and_fetch, url): url for url in urls}
+            for future in as_completed(results):
+                url = results[future]
+                try:
+                    yield future.result()
+                except Exception as exc:
+                    yield {"ошибка": exc, "url": url}
+
+    def run(self):
+
+        with open(f'{self._store_config["shop"]}.csv', 'a', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            for res in self.streaming_result():
+                writer.writerow(res)
 
 
     def collect(self):
