@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import csv
-
 from .base_parser import BaseParser
 
 class UniversalParser(BaseParser):
@@ -32,16 +31,18 @@ class UniversalParser(BaseParser):
             for future in as_completed(results):
                 url = results[future]
                 try:
+                    print(future.result())
                     yield future.result()
                 except Exception as exc:
                     yield {"ошибка": exc, "url": url}
 
     def run(self):
 
-        with open(f'{self._store_config["shop"]}.csv', 'a', encoding='utf-8') as f:
-            writer = csv.writer(f)
+        with open(f'{self._store_config["shop"]}.csv', 'a', encoding='utf-8-sig', newline='') as f:
+            writer = csv.writer(f, delimiter=';')
+            writer.writerow(['Название', 'Цена'])
             for res in self.streaming_result():
-                writer.writerow(res)
+                writer.writerow([res['название'], res['цена']])
 
 
     def collect(self):
