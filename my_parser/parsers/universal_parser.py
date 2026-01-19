@@ -1,5 +1,6 @@
 import os
 from datetime import date
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -20,22 +21,24 @@ class UniversalParser(BaseParser):
             'https': f'http://{proxy["login"]}:{proxy["password"]}@{proxy["host"]}:{proxy["port"]}'
         }
 
-        return requests.get(url, proxies=proxies, timeout=10)
+        return requests.get(url, proxies=proxies, timeout=10), proxy
 
-    def parse(self, html):
+    def parse(self, html, proxy):
         page = BeautifulSoup(html.text, 'html.parser')
         name = page.select_one(self._store_config['name']).text
         price = page.select_one(self._store_config['price']).text
         timestamp = date.today()
-        item = {'название': name, 'цена': price, 'date': timestamp}
+        item = {'название': name, 'цена': price, 'date': timestamp, 'proxy': proxy}
         return item
 
     def _parse_and_fetch(self, url):
-        html = self.fetch(url)
-        return self.parse(html)
+        html, proxy = self.fetch(url)
+        return self.parse(html, proxy)
 
     def streaming_result(self):
-        urls = self._store_config['urls']
+        urls_path = self._store_config['urls_path']
+        all_urls = pd.read_excel(urls_path)
+        urls = all_urls[all_urls['shop'] == self._store_config['shop']]['URLs'].tolist()
         with ThreadPoolExecutor (max_workers=self._store_config['max_workers']) as executor:
             results = {executor.submit(self._parse_and_fetch, url): url for url in urls}
             for future in as_completed(results):
@@ -55,7 +58,7 @@ class UniversalParser(BaseParser):
             with open(f'{self._store_config["shop"]}.csv', 'a', encoding='utf-8-sig', newline='') as f:
                 writer = csv.writer(f, delimiter=';')
                 if not file_exists:
-                    writer.writerow(['Название', 'Цена', 'Дата'])
+                    writer.writerow(['Название', 'Цена', 'Дата', 'Прокси'])
                 for res in self.streaming_result():
                     if "ошибка" in res:
                         writer.writerow([f"Ошибка:{res['ошибка']}", f"URL: {res['url']}"])
