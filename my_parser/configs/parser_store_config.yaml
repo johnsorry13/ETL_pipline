@@ -5,8 +5,7 @@ maxidom:
     urls: ['https://www.maxidom.ru/catalog/feny/1001570998/',
            'https://www.maxidom.ru/catalog/formy-dlya-vypechki/1001556853/',
            'https://www.maxidom.ru/catalog/otvertki-spetsialnye/1001275477/',
-           'https://www.maxidom.ru/catalog/mylnitsy/1001560888/',
-           'https://www.maxidom.ru/catalog/mylnitsy/1001560888/',
+          'https://www.maxidom.ru/catalog/mylnitsy/1001560888/',
            'https://www.maxidom.ru/catalog/formy-dlya-vypechki/1001556853/'
            ]
     max_workers: 3
