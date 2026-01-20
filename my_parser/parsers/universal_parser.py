@@ -24,8 +24,8 @@ class UniversalParser(BaseParser):
             urls = all_urls[all_urls['shop'] == self._store_config['shop']]['URLs'].tolist()
             self.logger.info(f"Успешно загружено {len(urls)} ссылок")
             return urls
-        except Exception as exec:
-            self.logger.error(f"Ошибка загрузки списка URL {exec}", exc_info=True)
+        except Exception as e:
+            self.logger.error(f"Ошибка загрузки списка URL {e}", exc_info=True)
             raise
 
 
@@ -34,7 +34,7 @@ class UniversalParser(BaseParser):
         try:
             proxy = self._proxy_manager.get_proxy()
             self.logger.debug(f"Прокси {proxy['host']} успешно загружен для {url}")
-        except Exception as exec:
+        except Exception as e:
             self.logger.error(f"Ошибка загрузки прокси для {url}", exc_info=True)
             raise
         # proxies = {'http': f'http://{proxy["login"]}:{proxy["password"]}@{proxy["host"]}:{proxy["port"]}'}
@@ -48,18 +48,23 @@ class UniversalParser(BaseParser):
             html = requests.get(url, proxies=proxies, timeout=10)
             html.raise_for_status()
             self.logger.debug(f"Страница: {url} успешно загружена, прокси: {proxy['host']}")
-        except Exception as exec:
+        except Exception as e:
             self.logger.error(f"Ошибка загрузки: {url}, прокси: {proxy['host']}")
             raise
         return html, proxy
 
+    def _safe_extract_text(self, soup, selector, default="N/A"):
+        if not selector:
+            return default
+        elem = soup.select_one(selector)
+        return elem.get_text(strip=True) if elem else default
+
     def parse(self, html, proxy, url):
         page = BeautifulSoup(html.text, 'html.parser')
-        name = page.select_one(self._store_config['name']).text
-        price = page.select_one(self._store_config['price']).text
+
         timestamp = date.today()
-        item = {'name': name,
-                'price': price,
+        item = {'name': self._safe_extract_text(page, self._store_config['name']),
+                'price': self._safe_extract_text(page, self._store_config['price']),
                 'date': timestamp,
                 'proxy': proxy['host'],
                 'url': url}
@@ -82,8 +87,8 @@ class UniversalParser(BaseParser):
                     self.logger.info(f"URL {completed_count} из {len(self._urls)}: "
                                      f"{result['url']}: прокси: {result['proxy']}")
                     yield result
-                except Exception as exc:
-                    error_msg = f"{type(exc).__name__}: {str(exc)[:16]}"
+                except Exception as e:
+                    error_msg = f"{type(e).__name__}: {str(e)[:16]}"
                     yield {"error": error_msg, "url": url}
 
     def run(self):
@@ -109,7 +114,7 @@ class UniversalParser(BaseParser):
                                          res.get('price', ""),
                                          res.get('date', ""),
                                          res.get('proxy', ""),
-                                         res.get('error', ''),
+                                         res.get('error', ""),
                                          res.get('url', "")])
         except (OSError, IOError) as e:
             print (f'Ошибка записи файла {e}')
