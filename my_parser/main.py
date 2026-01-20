@@ -32,6 +32,7 @@ with open(full_config_path) as f:
 maxidom_cfg = full_config['maxidom']
 
 maxidom = UniversalParser(maxidom_cfg, proxy_manager)
-
+start_time = time.time()
 maxidom.run()
-
+end_time = time.time()
+logger.info(f"Время выполнения скрипта {round((end_time - start_time), 2)}")
