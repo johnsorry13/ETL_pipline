@@ -1,4 +1,6 @@
 import os
+import re
+import ast
 import logging
 from datetime import date
 import pandas as pd
@@ -53,18 +55,35 @@ class UniversalParser(BaseParser):
             raise
         return html, proxy
 
-    def _safe_extract_text(self, soup, selector, default="N/A"):
-        if not selector:
-            return default
-        elem = soup.select_one(selector)
-        return elem.get_text(strip=True) if elem else default
+    #Безопасное извлечение из JS или СSS селектора
+    def _safe_extract_text(self, page, html, field_config, default="N/A"):
+        html_text = html.text
+        if 'js_var' in field_config:
+            try:
+                e_var_name = re.escape(field_config['js_var'])
+                pattern = r"var " + e_var_name + '\s*=\s*(\{[^}]+\});'
+                match = re.search(pattern, html_text, re.DOTALL)
+                if match:
+                    js_obj = ast.literal_eval(match.group(1))
+                    return str(js_obj.get(field_config['js_name'], default))
+
+            except Exception as e:
+                self.logger.debug(f"JS-парсинг не удался для {field_config['js_var']}: {e}")
+
+        if 'css' in field_config:
+            elem = page.select_one(field_config['css'])
+            return elem.get_text(strip=True) if elem else default
+        return default
 
     def parse(self, html, proxy, url):
         page = BeautifulSoup(html.text, 'html.parser')
 
         timestamp = date.today()
-        item = {'name': self._safe_extract_text(page, self._store_config['name']),
-                'price': self._safe_extract_text(page, self._store_config['price']),
+        item = {'name': self._safe_extract_text(page, html, self._store_config['fields']['name']),
+                'reg_price': self._safe_extract_text(page, html, self._store_config['fields']['reg_price']),
+                'price': self._safe_extract_text(page, html, self._store_config['fields']['price']),
+                'brand': self._safe_extract_text(page, html, self._store_config['fields']['brand']),
+                'sku': self._safe_extract_text(page, html, self._store_config['fields']['sku']),
                 'date': timestamp,
                 'proxy': proxy['host'],
                 'url': url}
@@ -77,7 +96,7 @@ class UniversalParser(BaseParser):
 
     def streaming_result(self):
         with ThreadPoolExecutor (max_workers=self._store_config['max_workers']) as executor:
-            results = {executor.submit(self._parse_and_fetch, url): url for url in self._urls[:10]}
+            results = {executor.submit(self._parse_and_fetch, url): url for url in self._urls[:50]}
             completed_count = 0
             for future in as_completed(results):
                 url = results[future]
@@ -99,10 +118,14 @@ class UniversalParser(BaseParser):
             with open(f'{self._store_config["shop"]}.csv', 'a', encoding='utf-8-sig', newline='') as f:
                 writer = csv.writer(f, delimiter=';')
                 if not file_exists:
-                    writer.writerow(['Название', 'Цена', 'Дата', 'Прокси', 'Ошибка', 'URL'])
+                    writer.writerow(['Название', 'Рег_цена', 'Цена', 'Бренд',
+                                     'sku', 'Дата', 'Прокси', 'Ошибка', 'URL'])
                 for res in self.streaming_result():
                     if "error" in res:
                         writer.writerow(["",
+                                         "",
+                                         "",
+                                         "",
                                          "",
                                          "",
                                          "",
@@ -111,7 +134,10 @@ class UniversalParser(BaseParser):
 
                     else:
                         writer.writerow([res.get('name', ""),
+                                         res.get('reg_price'),
                                          res.get('price', ""),
+                                         res.get('brand', ""),
+                                         res.get('sku', ""),
                                          res.get('date', ""),
                                          res.get('proxy', ""),
                                          res.get('error', ""),

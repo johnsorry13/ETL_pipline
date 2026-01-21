@@ -1,6 +1,40 @@
 maxidom:
     shop: 'maxidom'
-    name: '[itemprop="name"]'
-    price: '[itemprop="price"]'
+    fields:
+        name:
+            js_var: 'vueImpression' #сюда имя пременной для построения регулярки
+            js_name: 'name'
+            css: '[itemprop="name"]'
+        reg_price:
+            js_var: 'vueImpression' #сюда имя пременной для построения регулярки
+            js_name: 'price_old'
+            css: '[.l1__product-body-buy-price-discount-old span]'
+        price:
+            js_var: 'vueImpression' #сюда имя пременной для построения регулярки
+            js_name: 'price'
+            css: '[itemprop="price"]'
+        brand:
+            js_var: 'vueImpression' #сюда имя пременной для построения регулярки
+            js_name: 'brand'
+            css:
+        sku:
+            js_var: 'vueImpression' #сюда имя пременной для построения регулярки
+            js_name: 'sku'
+            css:
+
+ozon:
+    shop: 'ozon'
+    fields:
+        name:
+            css: '.pdp_gb9.tsHeadline550Medium'
+        reg_price:
+            css: '.pdp_bg4.pdp_g4b.pdp_b3g.tsBody400Small'
+        price:
+            css: '.pdp_b4g.tsHeadline500Medium'
+        brand:
+            css:
+        sku:
+            css:
+
     urls_path: 'D:\ETL\ETL_pipline\my_parser\sources\URLs.xlsx'
-    max_workers: 3
+    max_workers: 1
