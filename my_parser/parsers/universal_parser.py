@@ -5,18 +5,65 @@ import logging
 from datetime import date
 import pandas as pd
 import requests
+import yaml
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import csv
 from .base_parser import BaseParser
+from queue import Queue
+from playwright.sync_api import sync_playwright
+import threading
+from itertools import cycle
+from pathlib import Path
 
+class BrowserManager:
+    def __init__(self, size=3, headless=True):
+        self.size = size
+        self._headless = headless
+        self._initialized = False
+        self._queue = Queue()
+        self._sync_playwright = sync_playwright().start()
+        for _ in range(self.size):
+            browser = self._sync_playwright.chromium.launch(headless=self._headless)
+            self._queue.put(browser)
 
+    def get_browser(self):
+        return self._queue.get()
+    def return_browser(self, browser):
+        return self._queue.put(browser)
+    def close_all_browsers(self):
+        while not self._queue.empty():
+            browser = self._queue.get()
+            browser.close()
+        self._sync_playwright.stop()
+
+class ProxyManager:
+    def __init__(self, config_path=None):
+        if config_path is None:
+            config_path = (Path(__file__).parent.parent
+                                / "configs" / "proxies_example.yaml")
+
+        with open (config_path) as f:
+            self.config = yaml.safe_load(f)['proxies']
+
+        self._proxy_cycle = cycle(self.config)
+        self._lock = threading.Lock()
+
+    def get_proxy(self):
+        with self._lock:
+            return next(self._proxy_cycle)
+
+proxy_manager = ProxyManager()
+browser_manager = BrowserManager()
 class UniversalParser(BaseParser):
     logger = logging.getLogger(__name__)
-    def __init__(self, store_config, proxy_manager):
+    def __init__(self, store_config, proxy_manager, browser_manager):
         self._store_config = store_config
         self._proxy_manager = proxy_manager
         self._urls = self.load_urls()
+        if self._store_config['source'] == 'browser':
+            self._browser_manager = browser_manager
+
 
     def load_urls(self):
         self.logger.info("Загружаю список URL для парсинга")
@@ -31,7 +78,30 @@ class UniversalParser(BaseParser):
             raise
 
 
-    def fetch(self, url: str):
+    def feth_browser(self, url: str):
+        browser = self._browser_manager.get_browser()
+        proxy = self._proxy_manager.get_proxy()
+        context = browser.new_context(
+            proxy={
+                "server": f"http://proxy-{proxy['host']}:{proxy['port']}:",
+                "username": f"{proxy['login']}",
+                "password": f"{proxy['password']}"
+            },
+            user_agent="Mozilla/5.0 (Custom Bot)",
+            viewport={"width": 1920, "height": 1080}
+        )
+
+        page = context.new_page()
+        page.add_init_script("delete navigator.__proto__.webdriver")
+
+        page.goto(url)
+        
+        html = page.content()
+        return html
+
+        pass
+
+    def fetch_https(self, url: str):
         self.logger.debug(f"Загружаю прокси для {url}")
         try:
             proxy = self._proxy_manager.get_proxy()
@@ -54,6 +124,12 @@ class UniversalParser(BaseParser):
             self.logger.error(f"Ошибка загрузки: {url}, прокси: {proxy['host']}")
             raise
         return html, proxy
+
+    def fetch(self, url):
+        if self._store_config['source'] == 'browser':
+            return self.feth_browser(url)
+        if self._store_config['sourse'] == 'https':
+            return self.fetch_https(url)
 
     #Безопасное извлечение из JS или СSS селектора
     def _safe_extract_text(self, page, html, field_config, default="N/A"):

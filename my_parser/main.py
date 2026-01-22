@@ -22,7 +22,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
-proxy_manager = ProxyManager()
+
 full_config_path = (Path(__file__).parent
                / "configs" / "parser_store_config.yaml")
 
@@ -30,7 +30,11 @@ with open(full_config_path) as f:
     full_config = yaml.safe_load(f)
 
 ozon_cfg = full_config['ozon']
-ozon = UniversalParser(ozon_cfg, proxy_manager)
+ozon = UniversalParser(ozon_cfg)
+
+
+maxidom_cfg = full_config['maxidom']
+maxidom = UniversalParser(maxidom_cfg)
 
 
 start_time = time.time()

@@ -1,5 +1,6 @@
 maxidom:
     shop: 'maxidom'
+    source: 'https'
     fields:
         name:
             js_var: 'vueImpression' #сюда имя пременной для построения регулярки
@@ -24,6 +25,7 @@ maxidom:
 
 ozon:
     shop: 'ozon'
+    source: 'browser'
     fields:
         name:
             css: '.pdp_gb9.tsHeadline550Medium'
