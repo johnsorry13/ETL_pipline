@@ -41,8 +41,8 @@ maxidom_cfg = full_config['maxidom']
 
 
 start_time = time.time()
-ozon = UniversalParser(ozon_cfg)
-ozon.run()
+maxidom = UniversalParser(maxidom_cfg, proxy=0)
+maxidom.run()
 end_time = time.time()
 logger.info(f"Время выполнения скрипта {round((end_time - start_time), 2)}")
 

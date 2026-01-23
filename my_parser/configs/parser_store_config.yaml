@@ -24,7 +24,7 @@ maxidom:
             css:
 
     urls_path: 'D:\ETL\ETL_pipline\my_parser\sources\URLs.xlsx'
-    max_workers: 3
+    max_workers: 1
 ozon:
     shop: 'ozon'
     source: 'browser'
@@ -40,4 +40,4 @@ ozon:
 #        sku:
 #            css:
     urls_path: 'D:\ETL\ETL_pipline\my_parser\sources\URLs.xlsx'
-    max_workers: 1
+    max_workers: 3

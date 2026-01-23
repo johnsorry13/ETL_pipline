@@ -39,9 +39,12 @@ class ProxyManager:
 class UniversalParser(BaseParser):
     logger = logging.getLogger(__name__)
     _local = threading.local()
-    def __init__(self, store_config):
+    def __init__(self, store_config, proxy=1):
         self._store_config = store_config
-        self._proxy_manager = ProxyManager()
+        if proxy == 1:
+            self._proxy_manager = ProxyManager()
+        else:
+            self._proxy_manager = None
         self._urls = self.load_urls()
 
     def _get_browser(self):
@@ -67,15 +70,20 @@ class UniversalParser(BaseParser):
             raise
 
     def fetch_browser(self, url: str):
-        proxy = self._proxy_manager.get_proxy()
-        proxy_dict = {
-                "server": f"{proxy['host']}:{proxy['port']}",
-                "username": f"{proxy['login']}",
-                "password": f"{proxy['password']}"
-            }
+
+        if self._proxy_manager:
+            proxy = self._proxy_manager.get_proxy()
+            proxy_dict = {
+                    "server": f"{proxy['host']}:{proxy['port']}",
+                    "username": f"{proxy['login']}",
+                    "password": f"{proxy['password']}"
+                }
+        else:
+            proxy = None
+            proxy_dict = None
         browser = self._get_browser()
         context = browser.new_context(
-            # proxy=proxy_dict,
+            proxy=proxy_dict,
             viewport={"width": 1920, "height": 1080}
         )
         print()
@@ -91,27 +99,31 @@ class UniversalParser(BaseParser):
 
 
     def fetch_https(self, url: str):
-        self.logger.debug(f"Загружаю прокси для {url}")
-        try:
-            proxy = self._proxy_manager.get_proxy()
-            self.logger.debug(f"Прокси {proxy['host']} успешно загружен для {url}")
-        except Exception as e:
-            self.logger.error(f"Ошибка загрузки прокси для {url}", exc_info=True)
-            raise
-        # proxies = {'http': f'http://{proxy["login"]}:{proxy["password"]}@{proxy["host"]}:{proxy["port"]}'}
+        if self._proxy_manager:
+            self.logger.debug(f"Загружаю прокси для {url}")
+            try:
+                proxy = self._proxy_manager.get_proxy()
+                self.logger.debug(f"Прокси {proxy['host']} успешно загружен для {url}")
+            except Exception as e:
+                self.logger.error(f"Ошибка загрузки прокси для {url}", exc_info=True)
+                raise
+            # proxies = {'http': f'http://{proxy["login"]}:{proxy["password"]}@{proxy["host"]}:{proxy["port"]}'}
 
-        proxies = {
-            'http': f'http://{proxy["login"]}:{proxy["password"]}@{proxy["host"]}:{proxy["port"]}',
-            'https': f'http://{proxy["login"]}:{proxy["password"]}@{proxy["host"]}:{proxy["port"]}'
-        }
-        self.logger.debug(f"Загрузка страницы: {url}, прокси: {proxy['host']}")
+            proxies = {
+                'http': f'http://{proxy["login"]}:{proxy["password"]}@{proxy["host"]}:{proxy["port"]}',
+                'https': f'http://{proxy["login"]}:{proxy["password"]}@{proxy["host"]}:{proxy["port"]}'
+            }
+            self.logger.debug(f"Загрузка страницы: {url}, прокси: {proxy['host']}")
+        else:
+            proxies = None
+            proxy = None
         try:
             html = requests.get(url, proxies=proxies, timeout=10).text
             # html.raise_for_status()
 
-            self.logger.debug(f"Страница: {url} успешно загружена, прокси: {proxy['host']}")
+            self.logger.debug(f"Страница: {url} успешно загружена, прокси: {proxy['host'] if proxy else 'None'}")
         except Exception as e:
-            self.logger.error(f"Ошибка загрузки: {url}, прокси: {proxy['host']}")
+            self.logger.error(f"Ошибка загрузки: {url}, прокси: {proxy['host'] if proxy else 'None'}")
             raise
         return html, proxy
 
@@ -134,6 +146,7 @@ class UniversalParser(BaseParser):
                 match = re.search(pattern, html, re.DOTALL)
                 if match:
                     js_obj = ast.literal_eval(match.group(1))
+                    print(js_obj)
                     return str(js_obj.get(field_config['js_name'], default))
 
             except Exception as e:
@@ -155,7 +168,7 @@ class UniversalParser(BaseParser):
                 'brand': self._safe_extract_text(page, html, self._store_config['fields'].get('brand')),
                 'sku': self._safe_extract_text(page, html, self._store_config['fields'].get('sku')),
                 'date': timestamp,
-                'proxy': proxy['host'],
+                'proxy': proxy['host'] if proxy else 'без прокси',
                 'url': url}
 
         return item
@@ -166,7 +179,7 @@ class UniversalParser(BaseParser):
 
     def streaming_result(self):
         with ThreadPoolExecutor (max_workers=self._store_config['max_workers']) as executor:
-            results = {executor.submit(self._parse_and_fetch, url): url for url in self._urls[:10]}
+            results = {executor.submit(self._parse_and_fetch, url): url for url in self._urls[:1]}
             completed_count = 0
             for future in as_completed(results):
                 url = results[future]
