@@ -23,20 +23,21 @@ maxidom:
             js_name: 'sku'
             css:
 
+    urls_path: 'D:\ETL\ETL_pipline\my_parser\sources\URLs.xlsx'
+    max_workers: 3
 ozon:
     shop: 'ozon'
     source: 'browser'
     fields:
         name:
-            css: '.pdp_gb9.tsHeadline550Medium'
+            css: 'h1.tsHeadline550Medium'
         reg_price:
-            css: '.pdp_bg4.pdp_g4b.pdp_b3g.tsBody400Small'
+            css: '[data-widget="webPrice"] > div > div:nth-child(2) .tsBody400Small'
         price:
-            css: '.pdp_b4g.tsHeadline500Medium'
-        brand:
-            css:
-        sku:
-            css:
-
+            css: '[data-widget="webPrice"] .tsHeadline500Medium'
+#        brand:
+#            css:
+#        sku:
+#            css:
     urls_path: 'D:\ETL\ETL_pipline\my_parser\sources\URLs.xlsx'
     max_workers: 1

@@ -1,7 +1,6 @@
 import time
 import colorlog
 import yaml
-from utils.proxy_manager import ProxyManager
 from parsers.universal_parser import UniversalParser
 from pathlib import Path
 import logging
@@ -30,14 +29,21 @@ with open(full_config_path) as f:
     full_config = yaml.safe_load(f)
 
 ozon_cfg = full_config['ozon']
-ozon = UniversalParser(ozon_cfg)
-
-
 maxidom_cfg = full_config['maxidom']
-maxidom = UniversalParser(maxidom_cfg)
+
+
+# start_time = time.time()
+# maxidom = UniversalParser(maxidom_cfg)
+# maxidom.run()
+# end_time = time.time()
+# logger.info(f"Время выполнения скрипта {round((end_time - start_time), 2)}")
+# #
 
 
 start_time = time.time()
+ozon = UniversalParser(ozon_cfg)
 ozon.run()
 end_time = time.time()
 logger.info(f"Время выполнения скрипта {round((end_time - start_time), 2)}")
+
+

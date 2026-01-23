@@ -2,6 +2,7 @@ import os
 import re
 import ast
 import logging
+import time
 from datetime import date
 import pandas as pd
 import requests
@@ -16,26 +17,7 @@ import threading
 from itertools import cycle
 from pathlib import Path
 
-class BrowserManager:
-    def __init__(self, size=3, headless=True):
-        self.size = size
-        self._headless = headless
-        self._initialized = False
-        self._queue = Queue()
-        self._sync_playwright = sync_playwright().start()
-        for _ in range(self.size):
-            browser = self._sync_playwright.chromium.launch(headless=self._headless)
-            self._queue.put(browser)
 
-    def get_browser(self):
-        return self._queue.get()
-    def return_browser(self, browser):
-        return self._queue.put(browser)
-    def close_all_browsers(self):
-        while not self._queue.empty():
-            browser = self._queue.get()
-            browser.close()
-        self._sync_playwright.stop()
 
 class ProxyManager:
     def __init__(self, config_path=None):
@@ -53,16 +35,23 @@ class ProxyManager:
         with self._lock:
             return next(self._proxy_cycle)
 
-proxy_manager = ProxyManager()
-browser_manager = BrowserManager()
+
 class UniversalParser(BaseParser):
     logger = logging.getLogger(__name__)
-    def __init__(self, store_config, proxy_manager, browser_manager):
+    _local = threading.local()
+    def __init__(self, store_config):
         self._store_config = store_config
-        self._proxy_manager = proxy_manager
+        self._proxy_manager = ProxyManager()
         self._urls = self.load_urls()
-        if self._store_config['source'] == 'browser':
-            self._browser_manager = browser_manager
+
+    def _get_browser(self):
+        """Возвращает браузер, привязанный к текущему потоку."""
+        if not hasattr(UniversalParser._local, 'playwright'):
+            UniversalParser._local.playwright = sync_playwright().start()
+            UniversalParser._local.browser = UniversalParser._local.playwright.chromium.launch(
+                headless=self._store_config.get('headless', False)
+            )
+        return UniversalParser._local.browser
 
 
     def load_urls(self):
@@ -77,29 +66,29 @@ class UniversalParser(BaseParser):
             self.logger.error(f"Ошибка загрузки списка URL {e}", exc_info=True)
             raise
 
-
-    def feth_browser(self, url: str):
-        browser = self._browser_manager.get_browser()
+    def fetch_browser(self, url: str):
         proxy = self._proxy_manager.get_proxy()
-        context = browser.new_context(
-            proxy={
-                "server": f"http://proxy-{proxy['host']}:{proxy['port']}:",
+        proxy_dict = {
+                "server": f"{proxy['host']}:{proxy['port']}",
                 "username": f"{proxy['login']}",
                 "password": f"{proxy['password']}"
-            },
-            user_agent="Mozilla/5.0 (Custom Bot)",
+            }
+        browser = self._get_browser()
+        context = browser.new_context(
+            # proxy=proxy_dict,
             viewport={"width": 1920, "height": 1080}
         )
+        print()
+        try:
+            page = context.new_page()
+            page.add_init_script("delete navigator.__proto__.webdriver")
+            page.goto(url)
+            page.wait_for_selector("h1.tsHeadline550Medium", timeout=10000)
+            html = page.content()
+            return html, proxy
+        finally:
+            context.close()
 
-        page = context.new_page()
-        page.add_init_script("delete navigator.__proto__.webdriver")
-
-        page.goto(url)
-        
-        html = page.content()
-        return html
-
-        pass
 
     def fetch_https(self, url: str):
         self.logger.debug(f"Загружаю прокси для {url}")
@@ -117,8 +106,9 @@ class UniversalParser(BaseParser):
         }
         self.logger.debug(f"Загрузка страницы: {url}, прокси: {proxy['host']}")
         try:
-            html = requests.get(url, proxies=proxies, timeout=10)
-            html.raise_for_status()
+            html = requests.get(url, proxies=proxies, timeout=10).text
+            # html.raise_for_status()
+
             self.logger.debug(f"Страница: {url} успешно загружена, прокси: {proxy['host']}")
         except Exception as e:
             self.logger.error(f"Ошибка загрузки: {url}, прокси: {proxy['host']}")
@@ -127,18 +117,21 @@ class UniversalParser(BaseParser):
 
     def fetch(self, url):
         if self._store_config['source'] == 'browser':
-            return self.feth_browser(url)
-        if self._store_config['sourse'] == 'https':
+            self.logger.info('Начинаю загрузку через браузер')
+            return self.fetch_browser(url)
+        if self._store_config['source'] == 'https':
+            self.logger.info('Начинаю загрузку через https')
             return self.fetch_https(url)
 
     #Безопасное извлечение из JS или СSS селектора
     def _safe_extract_text(self, page, html, field_config, default="N/A"):
-        html_text = html.text
+        if field_config is None:
+            return default
         if 'js_var' in field_config:
             try:
                 e_var_name = re.escape(field_config['js_var'])
-                pattern = r"var " + e_var_name + '\s*=\s*(\{[^}]+\});'
-                match = re.search(pattern, html_text, re.DOTALL)
+                pattern = e_var_name + '\s*=\s*(\{[^}]+\});'
+                match = re.search(pattern, html, re.DOTALL)
                 if match:
                     js_obj = ast.literal_eval(match.group(1))
                     return str(js_obj.get(field_config['js_name'], default))
@@ -149,17 +142,18 @@ class UniversalParser(BaseParser):
         if 'css' in field_config:
             elem = page.select_one(field_config['css'])
             return elem.get_text(strip=True) if elem else default
+        self.logger.info(f"Парсинг не удался для Css {field_config['css']}")
         return default
 
     def parse(self, html, proxy, url):
-        page = BeautifulSoup(html.text, 'html.parser')
+        page = BeautifulSoup(html, 'html.parser')
 
         timestamp = date.today()
-        item = {'name': self._safe_extract_text(page, html, self._store_config['fields']['name']),
-                'reg_price': self._safe_extract_text(page, html, self._store_config['fields']['reg_price']),
-                'price': self._safe_extract_text(page, html, self._store_config['fields']['price']),
-                'brand': self._safe_extract_text(page, html, self._store_config['fields']['brand']),
-                'sku': self._safe_extract_text(page, html, self._store_config['fields']['sku']),
+        item = {'name': self._safe_extract_text(page, html, self._store_config['fields'].get('name')),
+                'reg_price': self._safe_extract_text(page, html, self._store_config['fields'].get('reg_price')),
+                'price': self._safe_extract_text(page, html, self._store_config['fields'].get('price')),
+                'brand': self._safe_extract_text(page, html, self._store_config['fields'].get('brand')),
+                'sku': self._safe_extract_text(page, html, self._store_config['fields'].get('sku')),
                 'date': timestamp,
                 'proxy': proxy['host'],
                 'url': url}
@@ -172,7 +166,7 @@ class UniversalParser(BaseParser):
 
     def streaming_result(self):
         with ThreadPoolExecutor (max_workers=self._store_config['max_workers']) as executor:
-            results = {executor.submit(self._parse_and_fetch, url): url for url in self._urls[:50]}
+            results = {executor.submit(self._parse_and_fetch, url): url for url in self._urls[:10]}
             completed_count = 0
             for future in as_completed(results):
                 url = results[future]
@@ -183,7 +177,7 @@ class UniversalParser(BaseParser):
                                      f"{result['url']}: прокси: {result['proxy']}")
                     yield result
                 except Exception as e:
-                    error_msg = f"{type(e).__name__}: {str(e)[:16]}"
+                    error_msg = f"{type(e).__name__}: {str(e)}"
                     yield {"error": error_msg, "url": url}
 
     def run(self):
