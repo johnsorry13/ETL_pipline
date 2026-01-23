@@ -86,7 +86,7 @@ class UniversalParser(BaseParser):
             proxy=proxy_dict,
             viewport={"width": 1920, "height": 1080}
         )
-        print()
+
         try:
             page = context.new_page()
             page.add_init_script("delete navigator.__proto__.webdriver")
@@ -118,7 +118,11 @@ class UniversalParser(BaseParser):
             proxies = None
             proxy = None
         try:
-            html = requests.get(url, proxies=proxies, timeout=10).text
+            if self._store_config.get('cookies'):
+                cookies = self._store_config['cookies']
+            else:
+                cookies = {}
+            html = requests.get(url, proxies=proxies, cookies=cookies, timeout=10).text
             # html.raise_for_status()
 
             self.logger.debug(f"Страница: {url} успешно загружена, прокси: {proxy['host'] if proxy else 'None'}")
@@ -146,7 +150,6 @@ class UniversalParser(BaseParser):
                 match = re.search(pattern, html, re.DOTALL)
                 if match:
                     js_obj = ast.literal_eval(match.group(1))
-                    print(js_obj)
                     return str(js_obj.get(field_config['js_name'], default))
 
             except Exception as e:
@@ -179,7 +182,7 @@ class UniversalParser(BaseParser):
 
     def streaming_result(self):
         with ThreadPoolExecutor (max_workers=self._store_config['max_workers']) as executor:
-            results = {executor.submit(self._parse_and_fetch, url): url for url in self._urls[:1]}
+            results = {executor.submit(self._parse_and_fetch, url): url for url in self._urls[:10]}
             completed_count = 0
             for future in as_completed(results):
                 url = results[future]

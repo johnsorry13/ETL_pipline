@@ -1,12 +1,12 @@
 ﻿Название;Рег_цена;Цена;Бренд;sku;Дата;Прокси;Ошибка;URL
+карниз для ванной 140х260см VERRAN d22/25мм сталь бежевый;N/A;1070;VERRAN;690-19;2026-01-23;45.132.129.247;;https://www.maxidom.ru/catalog/karnizy-dlya-vannoy-komnaty/1000866000/
 фонарь налобный светодиодный ФОТОН 3Вт IP54 RSH-700 оранжевый;N/A;N/A;ФОТОН;23129;2026-01-23;45.152.116.180;;https://www.maxidom.ru/catalog/fonari-nalobnye/1001315494/
 кружка ATMOSPHERE Geometry 360мл фарфор микс цвета;N/A;269;ATMOSPHERE;6707;2026-01-23;45.93.15.133;;https://www.maxidom.ru/catalog/kruzhki/1001328947/
-карниз для ванной 140х260см VERRAN d22/25мм сталь бежевый;N/A;1070;VERRAN;690-19;2026-01-23;45.132.129.247;;https://www.maxidom.ru/catalog/karnizy-dlya-vannoy-komnaty/1000866000/
 ;;;;;;;"SelectorSyntaxError: Malformed attribute selector at position 0
   line 1:
 [.l1__product-body-buy-price-discount-old span]
 ^";https://www.maxidom.ru/catalog/karnizy/1000928888/
-карниз АРТ-ДЕКОР струнный потолочный 2-х рядный 350см, арт.К.С.00.02.35.П;N/A;529;No name;К.С.00.02.35.П;2026-01-23;85.142.1.221;;https://www.maxidom.ru/catalog/karnizy/1000880176/
+карниз АРТ-ДЕКОР струнный потолочный 2-х рядный 350см, арт.К.С.00.02.35.П;N/A;540;No name;К.С.00.02.35.П;2026-01-23;85.142.1.221;;https://www.maxidom.ru/catalog/karnizy/1000880176/
 ;;;;;;;"SelectorSyntaxError: Malformed attribute selector at position 0
   line 1:
 [.l1__product-body-buy-price-discount-old span]
@@ -16,21 +16,8 @@
 [.l1__product-body-buy-price-discount-old span]
 ^";https://www.maxidom.ru/catalog/butylki-dlya-napitkov/1001446293/
 простыня на резинке MONA LIZA Classic 140х200см сатин зеленая, арт.505032/04;N/A;1859;MONA LIZA;505032/04;2026-01-23;45.152.116.180;;https://www.maxidom.ru/catalog/prostyni/1001224321/
-корзина ПОЛИМЕРБЫТ 20х10х5см 0,6л для бытовых нужд пластик в ассортименте без крышки;N/A;N/A;ПОЛИМЕРБЫТ;с330;2026-01-23;176.103.91.98;;https://www.maxidom.ru/catalog/konteynery-korzinki-yaschiki-dlya-hraneniya/1000280324/
+корзина ПОЛИМЕРБЫТ 20х10х5см 0,6л для бытовых нужд пластик в ассортименте без крышки;N/A;19;ПОЛИМЕРБЫТ;с330;2026-01-23;176.103.91.98;;https://www.maxidom.ru/catalog/konteynery-korzinki-yaschiki-dlya-hraneniya/1000280324/
 ;;;;;;;"SelectorSyntaxError: Malformed attribute selector at position 0
   line 1:
 [.l1__product-body-buy-price-discount-old span]
 ^";https://www.maxidom.ru/catalog/formy-s-antiprigarnym-pokrytiem/1001449934/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/kruzhki/1001328947/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/karnizy/1000928888/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/karnizy-dlya-vannoy-komnaty/1000866000/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/fonari-nalobnye/1001315494/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/skovorody/1001453592/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/butylki-dlya-napitkov/1001446293/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/konteynery-korzinki-yaschiki-dlya-hraneniya/1000280324/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/prostyni/1001224321/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/karnizy/1000880176/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/formy-s-antiprigarnym-pokrytiem/1001449934/
-;;;;;;;UnboundLocalError: cannot access local variable 'proxy' where it is not associated with a value;https://www.maxidom.ru/catalog/kruzhki/1001328947/
-;;;;;;;TypeError: 'NoneType' object is not subscriptable;https://www.maxidom.ru/catalog/kruzhki/1001328947/
-кружка ATMOSPHERE Geometry 360мл фарфор микс цвета;N/A;269;ATMOSPHERE;6707;2026-01-23;без прокси;;https://www.maxidom.ru/catalog/kruzhki/1001328947/

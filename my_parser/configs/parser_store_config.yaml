@@ -22,9 +22,11 @@ maxidom:
             js_var: 'vueImpression' #сюда имя пременной для построения регулярки
             js_name: 'sku'
             css:
+    cookies:
+        MAXI_LOC_ID: '2'
 
     urls_path: 'D:\ETL\ETL_pipline\my_parser\sources\URLs.xlsx'
-    max_workers: 1
+    max_workers: 3
 ozon:
     shop: 'ozon'
     source: 'browser'
