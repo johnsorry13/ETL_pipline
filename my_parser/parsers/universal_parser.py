@@ -56,6 +56,13 @@ class UniversalParser(BaseParser):
             )
         return UniversalParser._local.browser
 
+    def _close_browser(self):
+        if hasattr(UniversalParser._local, 'playwright'):
+            UniversalParser._local.browser.close()
+            UniversalParser._local.playwright.stop()
+            delattr(UniversalParser._local, 'browser')
+            delattr(UniversalParser._local, 'playwright')
+
 
     def load_urls(self):
         self.logger.info("Загружаю список URL для парсинга")
@@ -177,8 +184,12 @@ class UniversalParser(BaseParser):
         return item
 
     def _parse_and_fetch(self, url):
-        html, proxy = self.fetch(url)
-        return self.parse(html, proxy, url)
+        try:
+            html, proxy = self.fetch(url)
+            return self.parse(html, proxy, url)
+        finally:
+            if self._store_config['source']:
+                self._close_browser()
 
     def streaming_result(self):
         with ThreadPoolExecutor (max_workers=self._store_config['max_workers']) as executor:

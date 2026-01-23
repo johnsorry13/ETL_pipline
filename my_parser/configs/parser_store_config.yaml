@@ -41,5 +41,6 @@ ozon:
 #            css:
 #        sku:
 #            css:
+#    cookies:
     urls_path: 'D:\ETL\ETL_pipline\my_parser\sources\URLs.xlsx'
     max_workers: 3
