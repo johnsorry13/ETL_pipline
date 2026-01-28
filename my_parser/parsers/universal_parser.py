@@ -188,7 +188,7 @@ class UniversalParser(BaseParser):
             html, proxy = self.fetch(url)
             return self.parse(html, proxy, url)
         finally:
-            if self._store_config['source']:
+            if self._store_config['source'] == 'browser':
                 self._close_browser()
 
     def streaming_result(self):

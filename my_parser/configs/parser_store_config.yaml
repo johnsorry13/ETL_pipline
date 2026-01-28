@@ -9,7 +9,7 @@ maxidom:
         reg_price:
             js_var: 'vueImpression' #сюда имя пременной для построения регулярки
             js_name: 'price_old'
-            css: '[.l1__product-body-buy-price-discount-old span]'
+            css: '[l1__product-body-buy-price-discount-old span]'
         price:
             js_var: 'vueImpression' #сюда имя пременной для построения регулярки
             js_name: 'price'
