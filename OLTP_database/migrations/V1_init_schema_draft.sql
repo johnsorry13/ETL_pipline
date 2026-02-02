@@ -42,7 +42,8 @@ CREATE TABLE competitor_price (
 	reg_price DECIMAL(12,2),
 	promo_price DECIMAL(12,2),
 	scraped_at TIMESTAMP default NOW(),
-	source_url VARCHAR(500));
+	source_url VARCHAR(500))
+	;
 
 
 --Цена товара на дату
