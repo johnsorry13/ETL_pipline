@@ -177,6 +177,7 @@ class UniversalParser(BaseParser):
                 'price': self._safe_extract_text(page, html, self._store_config['fields'].get('price')),
                 'brand': self._safe_extract_text(page, html, self._store_config['fields'].get('brand')),
                 'sku': self._safe_extract_text(page, html, self._store_config['fields'].get('sku')),
+                'category': self._safe_extract_text(page, html, self._store_config['fields'].get('category')),
                 'date': timestamp,
                 'proxy': proxy['host'] if proxy else 'без прокси',
                 'url': url}
@@ -216,10 +217,11 @@ class UniversalParser(BaseParser):
                 writer = csv.writer(f, delimiter=';')
                 if not file_exists:
                     writer.writerow(['Название', 'Рег_цена', 'Цена', 'Бренд',
-                                     'sku', 'Дата', 'Прокси', 'Ошибка', 'URL'])
+                                     'sku', 'Категория','Дата', 'Прокси', 'Ошибка', 'URL'])
                 for res in self.streaming_result():
                     if "error" in res:
                         writer.writerow(["",
+                                         "",
                                          "",
                                          "",
                                          "",
@@ -235,6 +237,7 @@ class UniversalParser(BaseParser):
                                          res.get('price', ""),
                                          res.get('brand', ""),
                                          res.get('sku', ""),
+                                         res.get('category', ""),
                                          res.get('date', ""),
                                          res.get('proxy', ""),
                                          res.get('error', ""),

@@ -22,6 +22,8 @@ maxidom:
             js_var: 'vueImpression' #сюда имя пременной для построения регулярки
             js_name: 'sku'
             css:
+        category:
+            css: '.breadcrumbs'
     cookies:
         MAXI_LOC_ID: '2'
 

@@ -1,11 +1,14 @@
-from playwright.sync_api import sync_playwright
+string = 'Главная/Каталог/Освещение/Фонарики/Фонари налобные/фонарь налобный светодиодный ФОТОН 3Вт IP54 RSH-700 оранжевый'
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)
-    page = browser.new_page()
-    # Убираем флаг автоматизации через JS (обязательно!)
-    page.add_init_script("delete navigator.__proto__.webdriver")
+words = string.split('/')
 
-    page.goto("https://www.ozon.ru/product/kryshka-voronka-gorloviny-bachka-omyvatelya-omyvayki-vag-art-6v0955485-819727356/")
-    page.wait_for_timeout(5000)  # ждём 5 секунд (для демонстрации)
-    browser.close()
+category = {
+    'level1' : words[0],
+    'level2' : words[1],
+    'level3' : words[2],
+    'level4' : words[3],
+    'level5': words[4],
+
+}
+print(category)
+
