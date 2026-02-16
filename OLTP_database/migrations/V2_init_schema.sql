@@ -1,4 +1,4 @@
---Таблица по кадому магазину
+--Таблица по каждому магазину
 CREATE TABLE store (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(200) NOT NULL,

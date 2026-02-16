@@ -17,7 +17,7 @@ class OltpDataGenerator:
         for _ in range(15):
             store = {'name': f"ГИП{self.faker.random_int(min=1, max=100)}",
                         'city': self.faker.city(),
-                        'street': self.faker.address(),
+                        'street': self.faker.street_address(),
                         'phone': self.faker.phone_number(),
                         'is_active': self.faker.boolean()
             }
@@ -52,7 +52,7 @@ class OltpDataGenerator:
         generated_data = []
         for _ in range(20):
             supplier = {'name': self.faker.company(),
-                        'inn': self.faker.random_number(digits=10),
+                        'inn': str(self.faker.random_number(digits=10)),
                         'address': self.faker.address(),
                         'email': self.faker.email(),
                         'is_active': self.faker.boolean()
@@ -115,7 +115,7 @@ class OltpDataGenerator:
         df = pd.read_excel('product_matrix.xlsx')['УК'].unique().tolist()
         record = [(elem, None, elem[1:3]) for elem in df]
         try:
-            cur.executemany("""INSERT INTO categories (name, level_id) VALUES (%s, %s)""", record)
+            cur.executemany("""INSERT INTO categories (name, level_id) VALUES (%s, %s, %s)""", record)
             self.conn.commit()
             print("Все данные сохранены")
         except Exception as e:
