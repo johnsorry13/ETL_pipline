@@ -127,6 +127,7 @@ class OltpDataGenerator:
         query = """ INSERT INTO supplier (name)
              VALUES (%s) """
         self._execute_batch(query, generated_data)
+
     def get_id_from_table(self, table: str):
         if not self.conn:
             return []
@@ -168,3 +169,94 @@ class OltpDataGenerator:
         VALUES (%s, %s, %s, %s, %s, %s)"""
         self._execute_batch(query, generated_data)
 
+    def generate_warehouses(self):
+        """
+        Генерация складов по принципу: 1 магазин = 1 склад.
+        Перед генерацией таблица очищается во избежание дубликатов.
+        """
+        if not self.conn:
+            print("Ошибка: Нет соединения с базой данных.")
+            return
+
+        cur = self.conn.cursor()
+        try:
+            # 1. Очищаем таблицу перед новой генерацией (так как нет уникальных ограничений)
+            print("Очистка таблицы warehouse...")
+            cur.execute("TRUNCATE TABLE warehouse RESTART IDENTITY CASCADE")
+            self.conn.commit()
+
+            # 2. Получаем список всех магазинов (ID и название)
+            cur.execute("SELECT id, name FROM store")
+            stores = cur.fetchall()
+
+            if not stores:
+                print("Предупреждение: Таблица store пуста. Генерация складов пропущена.")
+                return
+
+            print(f"Генерация складов для {len(stores)} магазинов...")
+
+            generated_data = []
+
+            for store_id, store_name in stores:
+                # Формируем имя склада на основе имени магазина
+                warehouse_name = f"Склад {store_name}"
+                phone = self.faker.phone_number()
+
+                record = (
+                    warehouse_name,
+                    store_id,
+                    phone
+                )
+                generated_data.append(record)
+
+            # 3. Вставка данных
+            query = """
+                INSERT INTO warehouse (name, store_id, phone)
+                VALUES (%s, %s, %s)
+            """
+
+            self._execute_batch(query, generated_data)
+            print(f"Успешно создано {len(generated_data)} складов.")
+
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Ошибка при генерации складов: {e}")
+        finally:
+            cur.close()
+
+    def generate_sale_status(self):
+        """Заполнение справочника статусов продаж."""
+        statuses = [('Новый',), ('Оплачен',), ('В доставке',), ('Завершен',), ('Отменен',)]
+
+        cur = self.conn.cursor()
+        try:
+            # Очищаем таблицу перед вставкой, чтобы избежать дублей и сбросить ID
+            cur.execute("TRUNCATE TABLE sale_status RESTART IDENTITY CASCADE")
+
+            query = "INSERT INTO sale_status (status) VALUES (%s)"
+            cur.executemany(query, statuses)
+            self.conn.commit()
+            print(f"Добавлено {len(statuses)} статусов продаж.")
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Ошибка при генерации статусов продаж: {e}")
+        finally:
+            cur.close()
+
+    def generate_purchase_status(self):
+        """Заполнение справочника статусов закупок."""
+        statuses = [('Черновик',), ('Согласован',), ('Получен',), ('Отменен',)]
+
+        cur = self.conn.cursor()
+        try:
+            cur.execute("TRUNCATE TABLE purchase_status RESTART IDENTITY CASCADE")
+
+            query = "INSERT INTO purchase_status (status) VALUES (%s)"
+            cur.executemany(query, statuses)
+            self.conn.commit()
+            print(f"Добавлено {len(statuses)} статусов закупок.")
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Ошибка при генерации статусов закупок: {e}")
+        finally:
+            cur.close()
