@@ -4,14 +4,12 @@ import os
 import pandas as pd
 import logging
 from typing import List, Tuple, Any
-from datetime import datetime
-
+import random
 
 db_config = {'host':'localhost',
              'dbname':'oltp_test',
              'user':'postgres',
              'password': '1'}
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -119,6 +117,54 @@ class OltpDataGenerator:
         query = """INSERT INTO categories (name, level_id) VALUES (%s, %s)"""
         self._execute_batch(query, generated_data)
 
+    def generate_employees(self):
+        generated_data = []
+        for _ in range(5):
+            employee = {'name': self.faker.name()
+            }
+            record = (employee['name'])
+            generated_data.append(record)
+        query = """ INSERT INTO supplier (name)
+             VALUES (%s) """
+        self._execute_batch(query, generated_data)
+    def get_id_from_table(self, table: str):
+        if not self.conn:
+            return []
+        cur = self.conn.cursor()
+        try:
+            query = f"""SELECT id FROM {table}"""
+            cur.execute(query)
+            results = [row[0] for row in cur.fetchall()]
+            return results
+        except Exception as e:
+            return []
+        finally:
+            cur.close()
 
+    def generate_products(self):
+        df = pd.read_excel('product_matrix.xlsx')['Название'].unique().tolist()
+        generated_data = []
+        cat_id = self.get_id_from_table('categories')
+        uom_id = self.get_id_from_table('uom')
+        BRAND_POOL = [
+            "VestaHome", "TechnoStar", "BioLife", "UrbanStyle", "GreenWave",
+            "NordicLine", "SmartChoice", "EcoPure", "MetalPro", "SoftTouch",
+            "Kvantum", "AuroraFit", "DomMaster", "FlexiGo", "PrimeZone",
+            "VelvetCode", "IronClad", "FreshDay", "OptimaPlus", "SkyLink"
+        ]
 
+        for elem in df:
+            product = {"name": elem,
+                       "current_price": random.uniform(50.0, 10000.0),
+                       "category_id": random.choice(cat_id),
+                        "brand": random.choice(BRAND_POOL),
+                        "uom_id": random.choice(uom_id),
+                        "is_active": self.faker.boolean()
+            }
+            record = (product['name'], product['current_price'], product['category_id'], product['brand'],
+                      product['uom_id'], product['is_active'])
+            generated_data.append(record)
+        query = """INSERT INTO product (name, current_price, category_id, brand, uom_id, is_active) 
+        VALUES (%s, %s, %s, %s, %s, %s)"""
+        self._execute_batch(query, generated_data)
 
