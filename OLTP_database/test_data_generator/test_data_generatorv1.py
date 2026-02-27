@@ -124,7 +124,7 @@ class OltpDataGenerator:
             }
             record = (employee['name'],)
             generated_data.append(record)
-        query = """ INSERT INTO supplier (name)
+        query = """ INSERT INTO employees (name)
              VALUES %s """
         self._execute_batch(query, generated_data)
 
@@ -265,9 +265,9 @@ class OltpDataGenerator:
         generated_data = []
         for _ in range(1000):
             sale_doc = {'doc_date': self.faker.date_time_between(start_date='2025-01-01', end_date='2025-12-31'),
-                        'currency_id': self.get_id_from_table('currency'),
-                        'store_id': self.get_id_from_table('store'),
-                        'status_id': self.get_id_from_table('status')}
+                        'currency_id': random.choice(self.get_id_from_table('currency')),
+                        'store_id': random.choice(self.get_id_from_table('store')),
+                        'status_id': random.choice(self.get_id_from_table('sale_status'))}
             record = (sale_doc['doc_date'], sale_doc['currency_id'], sale_doc['store_id'], sale_doc['status_id'])
             generated_data.append(record)
 
@@ -278,10 +278,10 @@ class OltpDataGenerator:
         generated_data = []
         for _ in range(1000):
             purchase_doc = {'doc_date': self.faker.date_time_between(start_date='2025-01-01', end_date='2025-12-31'),
-                        'currency_id': self.get_id_from_table('currency'),
-                        'store_id': self.get_id_from_table('store'),
-                        'supplier_id': self.get_id_from_table('supplier'),
-                        'status_id': self.get_id_from_table('status')}
+                        'currency_id': random.choice(self.get_id_from_table('currency')),
+                        'store_id': random.choice(self.get_id_from_table('store')),
+                        'supplier_id': random.choice(self.get_id_from_table('supplier')),
+                        'status_id': random.choice(self.get_id_from_table('purchase_status'))}
             record = (purchase_doc['doc_date'], purchase_doc['currency_id'], purchase_doc['store_id'],
                       purchase_doc['supplier_id'], purchase_doc['status_id'])
             generated_data.append(record)
@@ -297,14 +297,13 @@ class OltpDataGenerator:
             logger.error("Таблица purchase_doc пуста. Сначала создайте документы.")
             return
 
-        # 2. Генерируем записи
         for _ in range(1000):  # Количество строк в таблице items
             record = (
                 self.faker.random_element(doc_ids),
-                self.get_id_from_table('product'),
+                random.choice(self.get_id_from_table('product')),
                 round(self.faker.pyfloat(min_value=10, max_value=5000), 2),
                 self.faker.random_int(min_value=1, max_value=50),
-                self.get_id_from_table('tax_rate')
+                random.choice(self.get_id_from_table('tax_rate'))
             )
             generated_data.append(record)
 
@@ -313,3 +312,62 @@ class OltpDataGenerator:
             VALUES %s
         """
         self._execute_batch(query, generated_data)
+
+    def generate_sale_items(self, items_count: int = 1000):
+        """
+        Генерация позиций продаж.
+        Цены берем из product.current_price с небольшой вариацией.
+        """
+        # 🔥 1. Кэшируем данные: один запрос вместо 1000
+        product_prices = self._get_product_prices_cache()  # {id: price}
+        product_ids = list(product_prices.keys())
+        tax_ids = self.get_id_from_table('tax_rate')
+        doc_ids = self.get_id_from_table('sale_doc')  # ✅ Исправлено: sale_doc, не sales_doc
+
+        if not all([product_prices, tax_ids, doc_ids]):
+            logger.error("Заполните справочники product, tax_rate, sale_doc")
+            return
+
+        generated_data = []
+
+        for _ in range(items_count):
+            product_id = random.choice(product_ids)
+            base_price = product_prices[product_id]
+
+            # 🔥 2. Добавляем реалистичность: цена ±10% от базовой
+            sale_price = round(base_price * random.uniform(0.9, 1.1), 2)
+
+            record = (
+                random.choice(doc_ids),  # doc_number_id
+                product_id,  # product_id
+                sale_price,  # price (из кэша с вариацией)
+                self.faker.random_int(min_value=1, max_value=50),  # quantity
+                random.choice(tax_ids)  # tax_id
+            )
+            generated_data.append(record)
+
+        # ✅ Исправлено: вставляем в sale_item, не purchase_item
+        query = """
+            INSERT INTO sale_item (doc_number_id, product_id, price, quantity, tax_id) 
+            VALUES %s
+        """
+        self._execute_batch(query, generated_data)
+        logger.info(f"Сгенерировано {len(generated_data)} позиций продаж")
+
+    def _get_product_prices_cache(self) -> dict:
+        """
+        Вспомогательный метод: загружает {product_id: current_price} один раз.
+        """
+        if not self.conn:
+            return {}
+
+        cur = self.conn.cursor()
+        try:
+            # Загружаем ВСЕ товары с ценами одним запросом
+            cur.execute("SELECT id, current_price FROM product WHERE current_price IS NOT NULL")
+            return {row[0]: float(row[1]) for row in cur.fetchall()}
+        except Exception as e:
+            logger.error(f"Ошибка загрузки цен: {e}")
+            return {}
+        finally:
+            cur.close()

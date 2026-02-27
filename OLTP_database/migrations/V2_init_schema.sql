@@ -170,7 +170,7 @@ CREATE TABLE sale_doc (
 --Таблица продажи попозиционно
 CREATE TABLE sale_item (
 	id SERIAL PRIMARY KEY,
-	doc_number_id INT NOT NULL REFERENCES sale(id),
+	doc_number_id INT NOT NULL REFERENCES sale_doc(id),
 	product_id INT NOT NULL REFERENCES product(id),
 	price DECIMAL(12,2) NOT NULL,
 	quantity INT NOT NULL CHECK (quantity > 0),
