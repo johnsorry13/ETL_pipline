@@ -131,14 +131,12 @@ CREATE TABLE purchase_status (
 --Таблица закупок по каждому документу
 CREATE TABLE purchase_doc (
 	id SERIAL PRIMARY KEY,
-	doc_number VARCHAR(200) NOT NULL UNIQUE,
 	doc_date TIMESTAMP NOT NULL,
 	currency INT NOT NULL REFERENCES currency(id),
 	store_id INT NOT NULL REFERENCES store(id),
 	supplier_id INT NOT NULL REFERENCES supplier(id),
 	status INT NOT NULL REFERENCES purchase_status(id),
-	created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-	CONSTRAINT uq_prch_doc_shop UNIQUE (doc_number, store_id)
+	created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 --Таблица закупки попозиционно
@@ -159,15 +157,13 @@ CREATE TABLE sale_status (
 );
 
 --Таблица продаж по каждому документу
-CREATE TABLE sale (
+CREATE TABLE sale_doc (
 	id SERIAL PRIMARY KEY,
-	doc_number VARCHAR(200) NOT NULL UNIQUE,
 	doc_date TIMESTAMP NOT NULL,
 	currency INT NOT NULL REFERENCES currency(id),
 	store_id INT NOT NULL REFERENCES store(id),
 	status INT NOT NULL REFERENCES sale_status(id),
-	created_at TIMESTAMP NOT NULL default NOW(),
-	CONSTRAINT uq_sale_doc_shop UNIQUE (doc_number, store_id)
+	created_at TIMESTAMP NOT NULL default NOW()
 );
 
 
@@ -183,22 +179,20 @@ CREATE TABLE sale_item (
 --Таблица для актуальных остатков
 
 CREATE TABLE stock (
-	id SERIAL PRIMARY KEY,
-	warehouse_id INT NOT NULL REFERENCES warehouse(id),
-	product_id INT NOT NULL REFERENCES product(id),
-	physical_qty DECIMAL(12,2) NOT NULL CHECK (physical_qty >= 0),
-	reserved_qty DECIMAL(12,2) NOT NULL CHECK (reserved_qty >= 0),
-	avg_cost DECIMAL(12,2) NOT NULL CHECK (avg_cost >= 0),
-	created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-	updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
-	CONSTRAINT uq_prd_wh UNIQUE(product_id, warehouse_id),
-	CHECK (reserved_qty <= physical_qty)
-	);
-
-	CREATE INDEX idx_stock_warehouse_product ON stock (warehouse_id, product_id);
+    id SERIAL PRIMARY KEY,
+    store_id INT NOT NULL REFERENCES store(id),
+    product_id INT NOT NULL REFERENCES product(id),
+    physical_qty DECIMAL(12,2) NOT NULL CHECK (physical_qty >= 0),
+    reserved_qty DECIMAL(12,2) NOT NULL CHECK (reserved_qty >= 0),
+    avg_cost DECIMAL(12,2) NOT NULL CHECK (avg_cost >= 0),
+    created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    CONSTRAINT uq_prd_wh UNIQUE(product_id, store_id),
+    CHECK (reserved_qty <= physical_qty)
+);
 	
 CREATE TABLE operation_type (
-	code VARCHAR(100) PRIMARY KEY NOT NULL,
+	id SERIAL PRIMARY KEY NOT NULL,
 	name VARCHAR(100),
 	description VARCHAR (200)
 	);
@@ -218,7 +212,7 @@ CREATE TABLE stock_history (
 	new_reserved_qty DECIMAL(12,2) NOT NULL CHECK (new_reserved_qty >= 0),
 	new_avg_cost DECIMAL(12,2) NOT NULL CHECK (new_avg_cost >= 0),
 	
-	operation_type VARCHAR(100) REFERENCES operation_type(code),
+	operation_type VARCHAR(100) REFERENCES operation_type(id),
 	
 	created_at TIMESTAMP DEFAULT NOW() NOT NULL,
 	updated_at TIMESTAMP DEFAULT NOW() NOT NULL

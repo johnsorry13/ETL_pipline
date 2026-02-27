@@ -5,10 +5,11 @@ import pandas as pd
 import logging
 from typing import List, Tuple, Any
 import random
+import datetime
 
-db_config = {'host':'localhost',
-             'dbname':'oltp_test',
-             'user':'postgres',
+db_config = {'host': 'localhost',
+             'dbname': 'oltp_test',
+             'user': 'postgres',
              'password': '1'}
 
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +47,7 @@ class OltpDataGenerator:
             raise ConnectionError("Невозможно выполнить запрос: соединение с БД отсутствует.")
         cur = self.conn.cursor()
         try:
-            cur.executemany(query, generated_data)
+            cur.execute_values(query, generated_data)
             self.conn.commit()
             logger.info(f"Вставлено {len(generated_data)} записей")
         except Exception as e:
@@ -62,9 +63,8 @@ class OltpDataGenerator:
         if not values:
             return
 
-        placeholders = ','.join(['%s'] * len(values[0]))
         query = f"""
-            INSERT INTO {table} VALUES ({placeholders})
+            INSERT INTO {table} VALUES %s
             ON CONFLICT DO NOTHING
         """
         self._execute_batch(query, values)
@@ -81,7 +81,7 @@ class OltpDataGenerator:
             record = (store['name'], store['city'], store['street'], store['phone'], store['is_active'])
             generated_data.append(record)
         query = """ INSERT INTO store (name, city, street, phone, is_active)
-             VALUES (%s, %s, %s, %s, %s) """
+             VALUES %s"""
         self._execute_batch(query, generated_data)
 
     def generate_competitors(self):
@@ -99,7 +99,7 @@ class OltpDataGenerator:
             record = (supplier['name'], supplier['inn'], supplier['address'], supplier['email'], supplier['is_active'])
             generated_data.append(record)
         query = """ INSERT INTO supplier (name, inn, address, email, is_active)
-             VALUES (%s, %s, %s, %s, %s) """
+             VALUES %s """
         self._execute_batch(query, generated_data)
 
     def generate_currency(self):
@@ -114,7 +114,7 @@ class OltpDataGenerator:
     def generate_categories(self):
         df = pd.read_excel('product_matrix.xlsx')['УК'].unique().tolist()
         generated_data = [(elem, elem[1:3]) for elem in df]
-        query = """INSERT INTO categories (name, level_id) VALUES (%s, %s)"""
+        query = """INSERT INTO categories (name, level_id) VALUES %s"""
         self._execute_batch(query, generated_data)
 
     def generate_employees(self):
@@ -122,10 +122,10 @@ class OltpDataGenerator:
         for _ in range(5):
             employee = {'name': self.faker.name()
             }
-            record = (employee['name'])
+            record = (employee['name'],)
             generated_data.append(record)
         query = """ INSERT INTO supplier (name)
-             VALUES (%s) """
+             VALUES %s """
         self._execute_batch(query, generated_data)
 
     def get_id_from_table(self, table: str):
@@ -166,7 +166,7 @@ class OltpDataGenerator:
                       product['uom_id'], product['is_active'])
             generated_data.append(record)
         query = """INSERT INTO product (name, current_price, category_id, brand, uom_id, is_active) 
-        VALUES (%s, %s, %s, %s, %s, %s)"""
+        VALUES %s"""
         self._execute_batch(query, generated_data)
 
     def generate_warehouses(self):
@@ -210,10 +210,7 @@ class OltpDataGenerator:
                 generated_data.append(record)
 
             # 3. Вставка данных
-            query = """
-                INSERT INTO warehouse (name, store_id, phone)
-                VALUES (%s, %s, %s)
-            """
+            query = """INSERT INTO warehouse (name, store_id, phone) VALUES %s"""
 
             self._execute_batch(query, generated_data)
             print(f"Успешно создано {len(generated_data)} складов.")
@@ -223,6 +220,9 @@ class OltpDataGenerator:
             print(f"Ошибка при генерации складов: {e}")
         finally:
             cur.close()
+
+    def generate_operation_type(self):
+        self.generate_static_data('operation_type', [('Продажа',), ('Закупка',)])
 
     def generate_sale_status(self):
         """Заполнение справочника статусов продаж."""
@@ -251,7 +251,7 @@ class OltpDataGenerator:
         try:
             cur.execute("TRUNCATE TABLE purchase_status RESTART IDENTITY CASCADE")
 
-            query = "INSERT INTO purchase_status (status) VALUES (%s)"
+            query = "INSERT INTO purchase_status (status) VALUES %s"
             cur.executemany(query, statuses)
             self.conn.commit()
             print(f"Добавлено {len(statuses)} статусов закупок.")
@@ -260,3 +260,56 @@ class OltpDataGenerator:
             print(f"Ошибка при генерации статусов закупок: {e}")
         finally:
             cur.close()
+
+    def generate_sale_doc(self):
+        generated_data = []
+        for _ in range(1000):
+            sale_doc = {'doc_date': self.faker.date_time_between(start_date='2025-01-01', end_date='2025-12-31'),
+                        'currency_id': self.get_id_from_table('currency'),
+                        'store_id': self.get_id_from_table('store'),
+                        'status_id': self.get_id_from_table('status')}
+            record = (sale_doc['doc_date'], sale_doc['currency_id'], sale_doc['store_id'], sale_doc['status_id'])
+            generated_data.append(record)
+
+        query = """INSERT INTO sale_doc (doc_date, currency, store_id, status) VALUES %s"""
+        self._execute_batch(query, generated_data)
+
+    def generate_purchase_doc(self):
+        generated_data = []
+        for _ in range(1000):
+            purchase_doc = {'doc_date': self.faker.date_time_between(start_date='2025-01-01', end_date='2025-12-31'),
+                        'currency_id': self.get_id_from_table('currency'),
+                        'store_id': self.get_id_from_table('store'),
+                        'supplier_id': self.get_id_from_table('supplier'),
+                        'status_id': self.get_id_from_table('status')}
+            record = (purchase_doc['doc_date'], purchase_doc['currency_id'], purchase_doc['store_id'],
+                      purchase_doc['supplier_id'], purchase_doc['status_id'])
+            generated_data.append(record)
+
+        query = """INSERT INTO purchase_doc (doc_date, currency, store_id, supplier_id, status) VALUES %s"""
+        self._execute_batch(query, generated_data)
+
+    def generate_purchase_items(self, items_per_doc: int = 5):
+
+        generated_data = []
+        doc_ids = self.get_id_from_table('purchase_doc')
+        if not doc_ids:
+            logger.error("Таблица purchase_doc пуста. Сначала создайте документы.")
+            return
+
+        # 2. Генерируем записи
+        for _ in range(1000):  # Количество строк в таблице items
+            record = (
+                self.faker.random_element(doc_ids),
+                self.get_id_from_table('product'),
+                round(self.faker.pyfloat(min_value=10, max_value=5000), 2),
+                self.faker.random_int(min_value=1, max_value=50),
+                self.get_id_from_table('tax_rate')
+            )
+            generated_data.append(record)
+
+        query = """
+            INSERT INTO purchase_item (doc_number_id, product_id, price, quantity, tax_id) 
+            VALUES %s
+        """
+        self._execute_batch(query, generated_data)
