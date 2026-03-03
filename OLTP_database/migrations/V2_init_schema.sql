@@ -109,16 +109,6 @@ CREATE TABLE product_price_history (
 	valid_to TIMESTAMP,
 	CONSTRAINT chk_price_dates CHECK (valid_from <= valid_to OR valid_to IS NULL)
 );
-	
---Таблица по каждому складу
-CREATE TABLE warehouse (
-	id SERIAL PRIMARY KEY,
-	name VARCHAR(100) NOT NULL,
-	store_id INT NOT NULL REFERENCES store(id),
-	phone VARCHAR(20),
-	created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-	updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
 
 CREATE TABLE purchase_status (
 	id SERIAL PRIMARY KEY,
@@ -190,7 +180,7 @@ CREATE TABLE stock (
     CONSTRAINT uq_prd_wh UNIQUE(product_id, store_id),
     CHECK (reserved_qty <= physical_qty)
 );
-	
+
 CREATE TABLE operation_type (
 	id SERIAL PRIMARY KEY NOT NULL,
 	name VARCHAR(100),
@@ -198,29 +188,25 @@ CREATE TABLE operation_type (
 	);
 
 
-
 CREATE TABLE stock_history (
 	id SERIAL PRIMARY KEY,
-	warehouse_id INT NOT NULL REFERENCES warehouse(id),
+	store_id INT NOT NULL REFERENCES store(id),
 	product_id INT NOT NULL REFERENCES product(id),
-	
+
 	old_physical_qty DECIMAL(12,2) NOT NULL CHECK (old_physical_qty >= 0),
     old_reserved_qty DECIMAL(12,2) NOT NULL CHECK (old_reserved_qty >= 0),
     old_avg_cost DECIMAL(12,2) NOT NULL CHECK (old_avg_cost >= 0),
-    
+
 	new_physical_qty DECIMAL(12,2) NOT NULL CHECK (new_physical_qty >= 0),
 	new_reserved_qty DECIMAL(12,2) NOT NULL CHECK (new_reserved_qty >= 0),
 	new_avg_cost DECIMAL(12,2) NOT NULL CHECK (new_avg_cost >= 0),
-	
-	operation_type VARCHAR(100) REFERENCES operation_type(id),
-	
+
+	operation_type INT REFERENCES operation_type(id),
+
 	created_at TIMESTAMP DEFAULT NOW() NOT NULL,
 	updated_at TIMESTAMP DEFAULT NOW() NOT NULL
 
 	);
-
-
-
 
 
 

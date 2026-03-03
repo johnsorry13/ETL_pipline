@@ -1,11 +1,12 @@
 import faker
-import psycopg
+import psycopg2
 import os
 import pandas as pd
 import logging
 from typing import List, Tuple, Any
 import random
 import datetime
+from psycopg2.extras import execute_values
 
 db_config = {'host': 'localhost',
              'dbname': 'oltp_test',
@@ -30,7 +31,7 @@ class OltpDataGenerator:
 
     def _connect(self):
         try:
-            self.conn = psycopg.connect(**self.db_config)
+            self.conn = psycopg2.connect(**self.db_config)
             logger.info("Подключение к БД прошло успешно")
         except Exception as e:
             logger.info(f"Ошибка подключения к БД", {e})
@@ -47,7 +48,7 @@ class OltpDataGenerator:
             raise ConnectionError("Невозможно выполнить запрос: соединение с БД отсутствует.")
         cur = self.conn.cursor()
         try:
-            cur.execute_values(query, generated_data)
+            execute_values(cur, query, generated_data)
             self.conn.commit()
             logger.info(f"Вставлено {len(generated_data)} записей")
         except Exception as e:
@@ -169,58 +170,6 @@ class OltpDataGenerator:
         VALUES %s"""
         self._execute_batch(query, generated_data)
 
-    def generate_warehouses(self):
-        """
-        Генерация складов по принципу: 1 магазин = 1 склад.
-        Перед генерацией таблица очищается во избежание дубликатов.
-        """
-        if not self.conn:
-            print("Ошибка: Нет соединения с базой данных.")
-            return
-
-        cur = self.conn.cursor()
-        try:
-            # 1. Очищаем таблицу перед новой генерацией (так как нет уникальных ограничений)
-            print("Очистка таблицы warehouse...")
-            cur.execute("TRUNCATE TABLE warehouse RESTART IDENTITY CASCADE")
-            self.conn.commit()
-
-            # 2. Получаем список всех магазинов (ID и название)
-            cur.execute("SELECT id, name FROM store")
-            stores = cur.fetchall()
-
-            if not stores:
-                print("Предупреждение: Таблица store пуста. Генерация складов пропущена.")
-                return
-
-            print(f"Генерация складов для {len(stores)} магазинов...")
-
-            generated_data = []
-
-            for store_id, store_name in stores:
-                # Формируем имя склада на основе имени магазина
-                warehouse_name = f"Склад {store_name}"
-                phone = self.faker.phone_number()
-
-                record = (
-                    warehouse_name,
-                    store_id,
-                    phone
-                )
-                generated_data.append(record)
-
-            # 3. Вставка данных
-            query = """INSERT INTO warehouse (name, store_id, phone) VALUES %s"""
-
-            self._execute_batch(query, generated_data)
-            print(f"Успешно создано {len(generated_data)} складов.")
-
-        except Exception as e:
-            self.conn.rollback()
-            print(f"Ошибка при генерации складов: {e}")
-        finally:
-            cur.close()
-
     def generate_operation_type(self):
         self.generate_static_data('operation_type', [('Продажа',), ('Закупка',)])
 
@@ -261,99 +210,6 @@ class OltpDataGenerator:
         finally:
             cur.close()
 
-    def generate_sale_doc(self):
-        generated_data = []
-        for _ in range(1000):
-            sale_doc = {'doc_date': self.faker.date_time_between(start_date='2025-01-01', end_date='2025-12-31'),
-                        'currency_id': random.choice(self.get_id_from_table('currency')),
-                        'store_id': random.choice(self.get_id_from_table('store')),
-                        'status_id': random.choice(self.get_id_from_table('sale_status'))}
-            record = (sale_doc['doc_date'], sale_doc['currency_id'], sale_doc['store_id'], sale_doc['status_id'])
-            generated_data.append(record)
-
-        query = """INSERT INTO sale_doc (doc_date, currency, store_id, status) VALUES %s"""
-        self._execute_batch(query, generated_data)
-
-    def generate_purchase_doc(self):
-        generated_data = []
-        for _ in range(1000):
-            purchase_doc = {'doc_date': self.faker.date_time_between(start_date='2025-01-01', end_date='2025-12-31'),
-                        'currency_id': random.choice(self.get_id_from_table('currency')),
-                        'store_id': random.choice(self.get_id_from_table('store')),
-                        'supplier_id': random.choice(self.get_id_from_table('supplier')),
-                        'status_id': random.choice(self.get_id_from_table('purchase_status'))}
-            record = (purchase_doc['doc_date'], purchase_doc['currency_id'], purchase_doc['store_id'],
-                      purchase_doc['supplier_id'], purchase_doc['status_id'])
-            generated_data.append(record)
-
-        query = """INSERT INTO purchase_doc (doc_date, currency, store_id, supplier_id, status) VALUES %s"""
-        self._execute_batch(query, generated_data)
-
-    def generate_purchase_items(self, items_per_doc: int = 5):
-
-        generated_data = []
-        doc_ids = self.get_id_from_table('purchase_doc')
-        if not doc_ids:
-            logger.error("Таблица purchase_doc пуста. Сначала создайте документы.")
-            return
-
-        for _ in range(1000):  # Количество строк в таблице items
-            record = (
-                self.faker.random_element(doc_ids),
-                random.choice(self.get_id_from_table('product')),
-                round(self.faker.pyfloat(min_value=10, max_value=5000), 2),
-                self.faker.random_int(min_value=1, max_value=50),
-                random.choice(self.get_id_from_table('tax_rate'))
-            )
-            generated_data.append(record)
-
-        query = """
-            INSERT INTO purchase_item (doc_number_id, product_id, price, quantity, tax_id) 
-            VALUES %s
-        """
-        self._execute_batch(query, generated_data)
-
-    def generate_sale_items(self, items_count: int = 1000):
-        """
-        Генерация позиций продаж.
-        Цены берем из product.current_price с небольшой вариацией.
-        """
-        # 🔥 1. Кэшируем данные: один запрос вместо 1000
-        product_prices = self._get_product_prices_cache()  # {id: price}
-        product_ids = list(product_prices.keys())
-        tax_ids = self.get_id_from_table('tax_rate')
-        doc_ids = self.get_id_from_table('sale_doc')  # ✅ Исправлено: sale_doc, не sales_doc
-
-        if not all([product_prices, tax_ids, doc_ids]):
-            logger.error("Заполните справочники product, tax_rate, sale_doc")
-            return
-
-        generated_data = []
-
-        for _ in range(items_count):
-            product_id = random.choice(product_ids)
-            base_price = product_prices[product_id]
-
-            # 🔥 2. Добавляем реалистичность: цена ±10% от базовой
-            sale_price = round(base_price * random.uniform(0.9, 1.1), 2)
-
-            record = (
-                random.choice(doc_ids),  # doc_number_id
-                product_id,  # product_id
-                sale_price,  # price (из кэша с вариацией)
-                self.faker.random_int(min_value=1, max_value=50),  # quantity
-                random.choice(tax_ids)  # tax_id
-            )
-            generated_data.append(record)
-
-        # ✅ Исправлено: вставляем в sale_item, не purchase_item
-        query = """
-            INSERT INTO sale_item (doc_number_id, product_id, price, quantity, tax_id) 
-            VALUES %s
-        """
-        self._execute_batch(query, generated_data)
-        logger.info(f"Сгенерировано {len(generated_data)} позиций продаж")
-
     def _get_product_prices_cache(self) -> dict:
         """
         Вспомогательный метод: загружает {product_id: current_price} один раз.
@@ -371,3 +227,50 @@ class OltpDataGenerator:
             return {}
         finally:
             cur.close()
+
+    def initial_stock_and_purchases(self, doc_number: int = 1000, start_date: datetime.date = None,
+                                    days_range: int = 365):
+
+        if start_date is None:
+            start_date = datetime.date.today() - datetime.timedelta(days=days_range)
+
+
+        currency_id = self.get_id_from_table('currency')
+        store_id = self.get_id_from_table('store')
+        supplier_id = self.get_id_from_table('supplier')
+        product_id = self.get_id_from_table('product')
+        tax_id = self.get_id_from_table('tax_rate')
+        price_cache = self._get_product_prices_cache()
+
+        if not all([store_id, supplier_id, product_id]):
+            logger.error("Не хватает данных в справочниках для генерации закупок")
+            return
+
+        for i in range(doc_number):
+            generated_data = []
+            random_days = random.randint(0, days_range)
+            doc_date = start_date + datetime.timedelta(days=random_days)
+            doc_date_ts = datetime.datetime.combine(doc_date, datetime.time(10, 0, 0))
+
+            record = (doc_date_ts,
+                      random.choice(currency_id),
+                      random.choice(store_id),
+                      random.choice(supplier_id),
+                      'Получен')
+            generated_data.append(record)
+            query = """INSERT INTO purchase_doc (doc_date, currency, store_id, supplier_id, status) VALUES %
+            """
+            self._execute_batch()
+
+        self.get_id_from_table('purchase_doc')
+
+
+
+
+
+
+
+
+
+
+
