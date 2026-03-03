@@ -171,7 +171,8 @@ class OltpDataGenerator:
         self._execute_batch(query, generated_data)
 
     def generate_operation_type(self):
-        self.generate_static_data('operation_type', [('Продажа',), ('Закупка',)])
+        self.generate_static_data('operation_type', [('Продажа', 'Списание товара при продаже'),
+                                                     ('Закупка','Приход товара')])
 
     def generate_sale_status(self):
         """Заполнение справочника статусов продаж."""
@@ -253,8 +254,6 @@ class OltpDataGenerator:
             currency_id = random.choice(currency_ids)
             store_id = random.choice(store_ids)
             supplier_id = random.choice(supplier_ids)
-
-
             record = (doc_date_ts,
                       currency_id,
                       store_id,
@@ -262,11 +261,13 @@ class OltpDataGenerator:
                       status)
             generated_data.append(record)
         query = """INSERT INTO purchase_doc (doc_date, currency, store_id, supplier_id, status) VALUES %s
-        RETURNING id, doc_date, store_id
             """
+        self._execute_batch(query, generated_data)
+
         cur = self.conn.cursor()
         try:
-            execute_values(cur, query, generated_data)
+            query = 'SELECT id, doc_date, store_id FROM purchase_doc'
+            cur.execute(query)
             inserted_docs = cur.fetchall()  # Теперь тут будут данные!
             self.conn.commit()
             logger.info(f"Вставлено {len(inserted_docs)} документов")
