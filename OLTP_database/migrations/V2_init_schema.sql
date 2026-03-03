@@ -29,7 +29,7 @@ CREATE TABLE currency (
 	created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 	updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
-	
+
 --Таблица по категориям продающимся в сети
 CREATE TABLE categories (
 	id SERIAL PRIMARY KEY,
@@ -189,24 +189,16 @@ CREATE TABLE operation_type (
 
 
 CREATE TABLE stock_history (
-	id SERIAL PRIMARY KEY,
-	store_id INT NOT NULL REFERENCES store(id),
-	product_id INT NOT NULL REFERENCES product(id),
-
-	old_physical_qty DECIMAL(12,2) NOT NULL CHECK (old_physical_qty >= 0),
-    old_reserved_qty DECIMAL(12,2) NOT NULL CHECK (old_reserved_qty >= 0),
-    old_avg_cost DECIMAL(12,2) NOT NULL CHECK (old_avg_cost >= 0),
-
-	new_physical_qty DECIMAL(12,2) NOT NULL CHECK (new_physical_qty >= 0),
-	new_reserved_qty DECIMAL(12,2) NOT NULL CHECK (new_reserved_qty >= 0),
-	new_avg_cost DECIMAL(12,2) NOT NULL CHECK (new_avg_cost >= 0),
-
-	operation_type INT REFERENCES operation_type(id),
-
-	created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-	updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-
-	);
+    id SERIAL PRIMARY KEY,
+    store_id INT NOT NULL REFERENCES store(id),
+    product_id INT NOT NULL REFERENCES product(id),
+    operation_type INT REFERENCES operation_type(id),
+    created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
+    quantity_change DECIMAL(12,2) NOT NULL, -- Положительное (приход) или отрицательное (расход)
+    doc_id INT, -- Ссылка на документ (purchase_doc.id или sale_doc.id)
+    price DECIMAL(12,2) DEFAULT 0,
+);
 
 
 

@@ -234,35 +234,77 @@ class OltpDataGenerator:
         if start_date is None:
             start_date = datetime.date.today() - datetime.timedelta(days=days_range)
 
-
-        currency_id = self.get_id_from_table('currency')
-        store_id = self.get_id_from_table('store')
-        supplier_id = self.get_id_from_table('supplier')
-        product_id = self.get_id_from_table('product')
-        tax_id = self.get_id_from_table('tax_rate')
+        currency_ids = self.get_id_from_table('currency')
+        store_ids = self.get_id_from_table('store')
+        supplier_ids = self.get_id_from_table('supplier')
+        product_ids = self.get_id_from_table('product')
+        tax_ids = self.get_id_from_table('tax_rate')
         price_cache = self._get_product_prices_cache()
 
-        if not all([store_id, supplier_id, product_id]):
+        if not all([store_ids, supplier_ids, product_ids]):
             logger.error("Не хватает данных в справочниках для генерации закупок")
             return
-
+        generated_data = []
         for i in range(doc_number):
-            generated_data = []
             random_days = random.randint(0, days_range)
             doc_date = start_date + datetime.timedelta(days=random_days)
             doc_date_ts = datetime.datetime.combine(doc_date, datetime.time(10, 0, 0))
+            status = 3
+            currency_id = random.choice(currency_ids)
+            store_id = random.choice(store_ids)
+            supplier_id = random.choice(supplier_ids)
+
 
             record = (doc_date_ts,
-                      random.choice(currency_id),
-                      random.choice(store_id),
-                      random.choice(supplier_id),
-                      'Получен')
+                      currency_id,
+                      store_id,
+                      supplier_id,
+                      status)
             generated_data.append(record)
-            query = """INSERT INTO purchase_doc (doc_date, currency, store_id, supplier_id, status) VALUES %
+        query = """INSERT INTO purchase_doc (doc_date, currency, store_id, supplier_id, status) VALUES %s
+        RETURNING id, doc_date, store_id
             """
-            self._execute_batch()
+        cur = self.conn.cursor()
+        try:
+            execute_values(cur, query, generated_data)
+            inserted_docs = cur.fetchall()  # Теперь тут будут данные!
+            self.conn.commit()
+            logger.info(f"Вставлено {len(inserted_docs)} документов")
+        finally:
+            cur.close()
 
-        self.get_id_from_table('purchase_doc')
+        doc_items = []
+        stock_history = []
+        for id, doc_date, store_id in inserted_docs:
+            items_count = random.randint(4,15)
+            for _ in range(items_count):
+                product_id = random.choice(product_ids)
+                tax_id = random.choice(tax_ids)
+                price = price_cache.get(product_id)*random.uniform(0.6, 0.8)
+                quantity = random.randint(5,15)
+                operation = 2
+                items_record  = (id,
+                           product_id,
+                           price,
+                           quantity,
+                           tax_id)
+                doc_items.append(items_record)
+                stock_history_record = (store_id,  product_id, operation, quantity, id, price)
+                stock_history.append(stock_history_record)
+
+        query = """INSERT INTO purchase_item (doc_number_id, product_id, price, quantity, tax_id) VALUES %s
+            """
+        self._execute_batch(query, doc_items)
+
+        query = """INSERT INTO stock_history (store_id,  product_id, operation_type, quantity_change,
+         doc_id, price) VALUES %s
+             """
+        self._execute_batch(query, stock_history)
+
+
+
+
+
 
 
 
